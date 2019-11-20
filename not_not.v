@@ -3,24 +3,25 @@ module not_not(
     input [2:0] KEY,
     input CLOCK_50,
     output [6:0] HEX0, HEX1, HEX4, HEX5,
-    output [3:0] LED,
+    output [3:0] LEDR
 );
     wire [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2;
-    reg [3:0] color_1, color_2, color_logic_output, not_not_output;
+    wire [3:0] color_1, color2;
+    reg [3:0] color_logic_output, not_not_output;
     wire reset;
 
     // Temporary assignment
     assign reset = SW[8];
-    assign enable = SW[9]
+    assign enable = SW[9];
 
-    assign LED[3:0] = not_not_output;
+    assign LEDR[3:0] = not_not_output;
 
     lfsr_3bits l0(
         .clock(CLOCK_50),
         .enable(enable),
         .reset(reset),
         .seed(3'b001), // Random seed
-        .lfrs_out(not_not_selector)
+        .lfsr_out(not_not_selector)
     );
 
     lfsr_3bits l1(
@@ -28,7 +29,7 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b010), // Random seed
-        .lfrs_out(color_logic_selector)
+        .lfsr_out(color_logic_selector)
     );
 
     lfsr_3bits l2(
@@ -36,7 +37,7 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b100), // Random seed
-        .lfrs_out(color_selector_1)
+        .lfsr_out(color_selector_1)
     );
 
     lfsr_3bits l3(
@@ -44,7 +45,7 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b101), // Random seed
-        .lfrs_out(color_selector_2)
+        .lfsr_out(color_selector_2)
     );
 
     // Set color to one of the four switches depending on selector value
@@ -58,6 +59,7 @@ module not_not(
             1: color_logic_output = color_1 & color_2; // <color1> and <color2>
             2: color_logic_output = color_1 | color_2;// <color1> or <color2>
             3: color_logic_output = color_2; // <color2>
+        endcase
     end
 
     always @(*)
@@ -67,6 +69,7 @@ module not_not(
             1: not_not_output = ~color_logic_output; // not
             2: not_not_output = color_logic_output; // not not
             3: not_not_output = ~color_logic_output; // not not not
+        endcase
     end
 
     hex_decoder h1(
