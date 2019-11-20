@@ -13,6 +13,8 @@ module not_not(
     assign reset = SW[8];
     assign enable = SW[9]
 
+    assign LED[3:0] = not_not_output;
+
     lfsr_3bits l0(
         .clock(CLOCK_50),
         .enable(enable),
