@@ -80,12 +80,12 @@ module not_not(
     );
 
     hex_decoder h4(
-        .hex_digit(),
+        .hex_digit(color_logic_selector),
         .segments(HEX4)
     );
 
     hex_decoder h5(
-        .hex_digit(),
+        .hex_digit(not_not_selector),
         .segments(HEX5)
     );
 endmodule
