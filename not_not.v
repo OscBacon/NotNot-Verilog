@@ -5,42 +5,42 @@ module not_not(
     output [6:0] HEX0, HEX1, HEX4, HEX5,
     output [3:0] LED,
 );
-
     wire [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2;
     reg [3:0] color_1, color_2, color_logic_output, not_not_output;
     wire reset;
 
     // Temporary assignment
     assign reset = SW[8];
+    assign enable = SW[9]
 
     lfsr_3bits l0(
         .clock(CLOCK_50),
-        .enable(SW[9]),
-        .reset(KEY[3]),
+        .enable(enable),
+        .reset(reset),
         .seed(3'b001), // Random seed
         .lfrs_out(not_not_selector)
     );
 
     lfsr_3bits l1(
         .clock(CLOCK_50),
-        .enable(SW[9]),
-        .reset(KEY[3]),
+        .enable(enable),
+        .reset(reset),
         .seed(3'b010), // Random seed
         .lfrs_out(color_logic_selector)
     );
 
     lfsr_3bits l2(
         .clock(CLOCK_50),
-        .enable(SW[9]),
-        .reset(KEY[3]),
+        .enable(enable),
+        .reset(reset),
         .seed(3'b100), // Random seed
         .lfrs_out(color_selector_1)
     );
 
     lfsr_3bits l3(
         .clock(CLOCK_50),
-        .enable(SW[9]),
-        .reset(KEY[3]),
+        .enable(enable),
+        .reset(reset),
         .seed(3'b101), // Random seed
         .lfrs_out(color_selector_2)
     );
