@@ -1,3 +1,4 @@
+`include "vga_text/VGA-Text-Generator.srcs/sources_1/new/wrapper.vhd"
 module not_not(
     input [9:0] SW, 
     input [2:0] KEY,
