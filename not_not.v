@@ -92,3 +92,9 @@ module not_not(
         .segments(HEX5)
     );
 endmodule
+
+module begin_game()
+;endmodule
+
+module game()
+;endmodule
