@@ -113,22 +113,22 @@ module not_not(
     end
 
     hex_decoder h1(
-        .hex_digit({2'b0, color_selector_1[1:0]),
+        .hex_digit({2'b0, color_selector_1[1:0]}),
         .segments(HEX1)
     );
 
     hex_decoder h0(
-        .hex_digit({2'b0, color_selector_2[1:0]),
+        .hex_digit({2'b0, color_selector_2[1:0]}),
         .segments(HEX0)
     );
 
     hex_decoder h4(
-        .hex_digit({2'b0, color_logic_selector[1:0]),
+        .hex_digit({2'b0, color_logic_selector[1:0]}),
         .segments(HEX4)
     );
 
     hex_decoder h5(
-        .hex_digit({2'b0, not_not_selector[1:0]),
+        .hex_digit({2'b0, not_not_selector[1:0]}),
         .segments(HEX5)
     );
 endmodule
