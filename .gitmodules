@@ -1,3 +1,0 @@
-[submodule "vga_text"]
-	path = vga_text
-	url = git@github.com:Derek-X-Wang/VGA-Text-Generator.git

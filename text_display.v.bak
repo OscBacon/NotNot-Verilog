@@ -1,0 +1,289 @@
+module text_display(
+    input clock,
+    input [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2,
+    input resetn, draw_enable,
+    output writeEn, done_draw
+    output [2:0] color, 
+    output [8:0] x,
+    output [7:0] y
+);
+    wire done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2;
+    
+    // Done drawing when color2 is drawn
+    assign done_draw = done_draw_color2;
+
+    control_text_display ctd(
+        .clock(clock),
+        .resetn(resetn),
+        .done_draw_notnot(done_draw_notnot),
+        .done_draw_color_logic(done_draw_color_logic),
+        .done_draw_color1(done_draw_color1),
+        .done_draw_color2(done_draw_color2),
+        .draw_enable(draw_enable),
+        .writeEn(writeEn),
+        .draw_notnot(draw_notnot),
+        .draw_color1(draw_color1),
+        .draw_color_logic(draw_color_logic),
+        .draw_color2(draw_color2)
+    );
+
+    datapath_text_display dtd(
+        .clock(clock),
+        .resetn(resetn),
+        .draw_notnot(draw_notnot),
+        .draw_color1(draw_color1),
+        .draw_color_logic(draw_color_logic),
+        .draw_color2(draw_color2),
+        .not_not_selector(not_not_selector),
+        .color_logic_selector(color_logic_selector),
+        .color_selector_1(color_selector_1),
+        .color_selector_2(color_selector_2),
+        .done_draw_notnot(done_draw_notnot),
+        .done_draw_color_logic(done_draw_color_logic),
+        .done_draw_color1(done_draw_color1),
+        .done_draw_color2(done_draw_color2),
+        .color(color),
+        .x(x),
+        .y(y)
+    );
+endmodule
+
+module control_text_display(
+    input clock, resetn,
+    input done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2, draw_enable,
+    output reg writeEn,
+    output reg draw_notnot, draw_color1, draw_color_logic, draw_color2
+);
+
+    reg [1:0] current_state, next_state;
+
+    localparam
+        S_WAIT = 3'd0,
+        S_DRAW_NOTNOT = 3'd1,
+        S_DRAW_COLOR1 = 3'd2,
+        S_DRAW_COLOR_LOGIC = 3'd3,
+        S_DRAW_COLOR2 = 3'd4;
+
+    // State table
+    always@(*)
+    begin: state_table
+        case (current_state)
+            S_WAIT: next_state = draw_enable? S_DRAW_NOTNOT : S_WAIT;
+            S_DRAW_NOTNOT: next_state = done_draw_notnot? S_DRAW_COLOR1: S_DRAW_NOTNOT;
+            S_DRAW_COLOR1: next_state = done_draw_color1? S_DRAW_COLOR_LOGIC: S_DRAW_COLOR1;
+            S_DRAW_COLOR_LOGIC: next_state = done_draw_color_logic? S_DRAW_COLOR2 : S_DRAW_COLOR_LOGIC;
+            S_DRAW_COLOR2: next_state = done_draw_color2? S_WAIT: S_DRAW_COLOR2;
+            default: next_state = S_WAIT;
+        endcase
+    end // state_table
+
+    // Enable registers
+    always @(*) begin: enable_signals
+        // By default: all signals 0
+        draw_notnot = 1'b0;
+        draw_color1 = 1'b0;
+        draw_color_logic = 1'b0;
+        draw_color2 = 1'b0;
+        writeEn = 1'b0;
+        
+        case (current_state)
+            S_DRAW_NOTNOT : begin 
+                draw_notnot = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_DRAW_COLOR1 : begin 
+                draw_color1 = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_DRAW_COLOR_LOGIC : begin
+                draw_color_logic = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_DRAW_COLOR2 : begin
+                draw_color2 = 1'b1;
+                writeEn = 1'b1;
+                end
+        endcase
+    end
+
+    // State registers
+    always @(posedge clock)
+    begin: state_FFs
+        if (resetn == 0)
+            current_state <= S_WAIT;
+        else
+            current_state <= next_state;
+    end
+endmodule
+
+
+module datapath_text_display(
+    input clock, resetn,
+    input draw_notnot, draw_color1, draw_color_logic, draw_color2,
+    input [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2,
+    output reg done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2,
+    output reg [2:0] color,
+    output reg [8:0] x,
+    output reg [7:0] y
+);
+    wire [7:0] xnotnot = 8'd20;
+    wire [7:0] xcolor1 = 8'd75;
+    wire [7:0] xcolor_logic = 8'd130;
+    wire [7:0] xcolor2 = 8'd185;
+
+    wire [2:0] blank_color, not_color, notnot_color, notnotnot_color;
+    wire [2:0] red_color, green_color, blue_color, yellow_color;
+    wire [2:0] and_color, or_color;
+    reg [13:0] notnot_address, color_address, color_logic_address;
+
+    blankROM n0(
+        .address(notnot_address),
+        .clock(clock),
+        .q(blank_color)
+    );
+
+    notROM n1(
+        .address(notnot_address),
+        .clock(clock),
+        .q(not_color)
+    );
+
+    notnotROM n2(
+        .address(notnot_address),
+        .clock(clock),
+        .q(notnot_color)
+    );
+
+    notnotnotROM n3(
+        .address(notnot_address),
+        .clock(clock),
+        .q(notnotnot_color)
+    );
+
+    redROM r0(
+        .address(color_address),
+        .clock(clock),
+        .q(red_color)
+    );
+
+    greenROM g0(
+        .address(color_address),
+        .clock(clock),
+        .q(green_color)
+    );
+
+    blueROM b0(
+        .address(color_address),
+        .clock(clock),
+        .q(blue_color)
+    );
+
+    yellowROM y0(
+        .address(color_address),
+        .clock(clock),
+        .q(yellow_color)
+    );
+
+    always @(posedge clock)
+    begin
+        if (resetn == 0)
+        begin
+            done_draw_notnot <= 1'b0;
+            done_draw_color1 <= 1'b0;
+            done_draw_color_logic <= 1'b0;
+            done_draw_color2 <= 1'b0;
+            notnot_address <= 14'b0;
+            color_address <= 14'b0;
+            color_logic_address <= 14'b0;
+            color <= 3'b0;
+            x <= 9'b0;
+            y <= 8'b0;
+        end
+        else begin
+            if (draw_notnot) begin
+                case (not_not_selector[1:0])
+                    0: color <= blank_color;
+                    1: color <= not_color;
+                    2: color <= notnot_color;
+                    3: color <= notnotnot_color;
+                endcase
+
+                x <= xnotnot + notnot_address[6:0];
+                y <= notnot_address[13:7];
+
+                notnot_address <= notnot_address + 1'b1;
+
+                if (notnot_address == 14'd16000)
+                begin
+                    done_draw_notnot <= 1'b1;
+                    notnot_address <= 14'd0;
+                end
+            end
+
+            if (draw_color1) begin
+                case (color_selector_1[1:0])
+                    0: color <= red_color;
+                    1: color <= green_color;
+                    2: color <= blue_color;
+                    3: color <= yellow_color;
+                endcase
+
+                x <= xcolor1 + color_address[6:0];
+                y <= color_address[13:7];
+
+                color_address <= color_address + 1'b1;
+
+                if (color_address == 14'd16000)
+                begin
+                    done_draw_color1 <= 1'b1;
+                    color_address <= 14'd0;
+                end
+            end
+
+            if (draw_color_logic) begin
+                case (color_logic_selector[1:0])
+                    3: color <= blank_color;
+                    2: color <= and_color;
+                    1: color <= or_color;
+                    0: color <= blank_color;
+                endcase
+
+                x <= xcolor1 + color_logic_address[6:0];
+                y <= color_logic_address[13:7];
+
+                color_logic_address <= color_logic_address + 1'b1;
+
+                if (color_logic_address == 14'd16000)
+                begin
+                    done_draw_color_logic <= 1'b1;
+                    color_logic_address <= 14'd0;
+                end
+            end
+
+            if (draw_color2) begin
+                // If the logic only has one color, just display a blank
+                if (color_logic_selector[1:0] == 2'd0 || color_logic_selector[1:0] == 2'd3)
+                    color <= blank_color;
+                else begin
+                    case (color_selector_2[1:0])
+                        3: color <= red_color;
+                        2: color <= green_color;
+                        1: color <= blue_color;
+                        0: color <= yellow_color;
+                    endcase
+                end
+
+                x <= xcolor2 + color_address[6:0];
+                y <= color_address[13:7];
+
+                color_address <= color_address + 1'b1;
+
+                if (color_address == 14'd16000)
+                begin
+                    done_draw_color2 <= 1'b1;
+                    color_address <= 14'd0;
+                end
+            end
+        end
+    end    
+endmodule

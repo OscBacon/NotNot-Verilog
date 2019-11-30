@@ -43,7 +43,7 @@ module not_not(
         .resetn(reset),
         .draw_enable(draw_enable),
         .writeEn(writeEn),
-        .done_draw(done_draw),
+        .done_draw(done_draw)
         .color(color),
         .x(x),
         .y(y)
