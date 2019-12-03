@@ -10,7 +10,7 @@ module lfsr_3bits(
     begin
         if (enable == 1'b1)
             begin
-                if (reset == 1'b1 || lfsr_out == 3'b111)
+                if (reset == 0 || lfsr_out == 3'b111)
                     lfsr_out <= seed;
                 else
                     lfsr_out <= {lfsr_out[1:0], xnor_wire};
