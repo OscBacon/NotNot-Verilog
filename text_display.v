@@ -346,8 +346,8 @@ module datapath_text_display(
 
                 case (colour_logic_selector[1:0])
                     0: colour <= blank_colour;
-                    1: colour <= or_colour;
-                    2: colour <= and_colour;
+                    1: colour <= and_colour;
+                    2: colour <= or_colour;
                     3: colour <= blank_colour;
                 endcase
 
