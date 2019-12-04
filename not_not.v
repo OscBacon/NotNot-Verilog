@@ -20,7 +20,7 @@ module not_not(
     wire [3:0] colour_1, colour_2;
     reg [3:0] colour_logic_output, not_not_output;
     wire enable, debug, reset;
-    wire reset_vga, done_draw;
+    wire reset_vga, done_draw, done_draw_black;
 
     // Temporary assignment
     assign reset_vga = SW[6];
@@ -39,6 +39,7 @@ module not_not(
     wire start = SW[0];
     wire lose = SW[1];
     assign draw_enable = SW[2];
+    wire black = SW[3];
 
     text_display td0(
         .clock(CLOCK_50),
@@ -50,8 +51,10 @@ module not_not(
         .draw_enable(draw_enable),
         .start(start),
         .lose(lose),
+        .black(black),
         .writeEn(writeEn),
         .done_draw(done_draw),
+        .done_draw_black(done_draw_black),
         .colour(colour),
         .x(x),
         .y(y)
