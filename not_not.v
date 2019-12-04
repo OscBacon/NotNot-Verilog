@@ -16,12 +16,14 @@ module not_not(
 	output [9:0] VGA_G, //	VGA Green[9:0]
 	output [9:0] VGA_B //	VGA Blue[9:0]
 );
-    wire [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2;
-    wire [3:0] color_1, color2;
-    reg [3:0] color_logic_output, not_not_output;
-    wire reset, done_draw;
+    wire [2:0] not_not_selector, colour_logic_selector, colour_selector_1, colour_selector_2;
+    wire [3:0] colour_1, colour_2;
+    reg [3:0] colour_logic_output, not_not_output;
+    wire enable, debug, reset;
+    wire reset_vga, done_draw;
 
     // Temporary assignment
+    assign reset_vga = SW[6];
     assign reset = SW[8];
     assign enable = SW[9];
     assign debug = SW[7];
@@ -34,17 +36,23 @@ module not_not(
 	wire [7:0] y;
 	wire writeEn, draw_enable;
 
+    wire start = SW[0];
+    wire lose = SW[1];
+    assign draw_enable = SW[2];
+
     text_display td0(
         .clock(CLOCK_50),
         .not_not_selector(not_not_selector),
-        .color_logic_selector(color_logic_selector),
-        .color_selector_1(color_selector_1),
-        .color_selector_2(color_selector_2),
+        .colour_logic_selector(colour_logic_selector),
+        .colour_selector_1(colour_selector_1),
+        .colour_selector_2(colour_selector_2),
         .resetn(reset),
         .draw_enable(draw_enable),
+        .start(start),
+        .lose(lose),
         .writeEn(writeEn),
         .done_draw(done_draw),
-        .color(color),
+        .colour(colour),
         .x(x),
         .y(y)
     );
@@ -53,7 +61,7 @@ module not_not(
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
 	vga_adapter VGA(
-			.resetn(reset),
+			.resetn(reset_vga),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
@@ -86,7 +94,7 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b010), // Random seed
-        .lfsr_out(color_logic_selector)
+        .lfsr_out(colour_logic_selector)
     );
 
     lfsr_3bits l2(
@@ -94,7 +102,7 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b100), // Random seed
-        .lfsr_out(color_selector_1)
+        .lfsr_out(colour_selector_1)
     );
 
     lfsr_3bits l3(
@@ -102,45 +110,45 @@ module not_not(
         .enable(enable),
         .reset(reset),
         .seed(3'b101), // Random seed
-        .lfsr_out(color_selector_2)
+        .lfsr_out(colour_selector_2)
     );
 
-    // Set color to one of the four switches depending on selector value
-    assign color_1 = 1 << color_selector_1[1:0];
-    assign color_2 = 1 << color_selector_2[1:0];
+    // Set colour to one of the four switches depending on selector value
+    assign colour_1 = 1 << colour_selector_1[1:0];
+    assign colour_2 = 1 << colour_selector_2[1:0];
 
     always @(*)
     begin
-        case (color_logic_selector[1:0])
-            0: color_logic_output = color_1; // <color1>
-            1: color_logic_output = color_1 & color_2; // <color1> and <color2>
-            2: color_logic_output = color_1 | color_2;// <color1> or <color2>
-            3: color_logic_output = color_1; // <color1>
+        case (colour_logic_selector[1:0])
+            0: colour_logic_output = colour_1; // <colour1>
+            1: colour_logic_output = colour_1 & colour_2; // <colour1> and <colour2>
+            2: colour_logic_output = colour_1 | colour_2;// <colour1> or <colour2>
+            3: colour_logic_output = colour_1; // <colour1>
         endcase
     end
 
     always @(*)
     begin
         case (not_not_selector[1:0])
-            0: not_not_output = color_logic_output; // <nothing>
-            1: not_not_output = ~color_logic_output; // not
-            2: not_not_output = color_logic_output; // not not
-            3: not_not_output = ~color_logic_output; // not not not
+            0: not_not_output = colour_logic_output; // <nothing>
+            1: not_not_output = ~colour_logic_output; // not
+            2: not_not_output = colour_logic_output; // not not
+            3: not_not_output = ~colour_logic_output; // not not not
         endcase
     end
 
     hex_decoder h1(
-        .hex_digit({2'b0, color_selector_1[1:0]}),
+        .hex_digit({2'b0, colour_selector_1[1:0]}),
         .segments(HEX1)
     );
 
     hex_decoder h0(
-        .hex_digit({2'b0, color_selector_2[1:0]}),
+        .hex_digit({2'b0, colour_selector_2[1:0]}),
         .segments(HEX0)
     );
 
     hex_decoder h4(
-        .hex_digit({2'b0, color_logic_selector[1:0]}),
+        .hex_digit({2'b0, colour_logic_selector[1:0]}),
         .segments(HEX4)
     );
 

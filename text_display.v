@@ -1,48 +1,63 @@
 module text_display(
     input clock,
-    input [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2,
+    input [2:0] not_not_selector, colour_logic_selector, colour_selector_1, colour_selector_2,
     input resetn, draw_enable,
+    input start, lose,
     output writeEn, done_draw,
-    output [2:0] color, 
+    output [2:0] colour, 
     output [8:0] x,
     output [7:0] y
 );
-    wire done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2;
+    wire draw_notnot, draw_colour_logic, draw_colour1, draw_colour2;
+    wire draw_start, draw_lose;
+
+    wire done_draw_notnot, done_draw_colour_logic, done_draw_colour1, done_draw_colour2;
+    wire done_draw_lose, done_draw_start;
     
-    // Done drawing when color2 is drawn
-    assign done_draw = done_draw_color2;
+    // Done drawing when colour2 is drawn
+    assign done_draw = done_draw_colour2;
 
     control_text_display ctd(
         .clock(clock),
         .resetn(resetn),
         .done_draw_notnot(done_draw_notnot),
-        .done_draw_color_logic(done_draw_color_logic),
-        .done_draw_color1(done_draw_color1),
-        .done_draw_color2(done_draw_color2),
+        .done_draw_colour_logic(done_draw_colour_logic),
+        .done_draw_colour1(done_draw_colour1),
+        .done_draw_colour2(done_draw_colour2),
         .draw_enable(draw_enable),
+        .start(start),
+        .lose(lose),
         .writeEn(writeEn),
         .draw_notnot(draw_notnot),
-        .draw_color1(draw_color1),
-        .draw_color_logic(draw_color_logic),
-        .draw_color2(draw_color2)
+        .draw_colour1(draw_colour1),
+        .draw_colour_logic(draw_colour_logic),
+        .draw_colour2(draw_colour2),
+        .draw_start(draw_start),
+        .draw_lose(draw_lose),
+        .done_draw_start(done_draw_start),
+        .done_draw_lose(done_draw_lose)
     );
 
     datapath_text_display dtd(
         .clock(clock),
         .resetn(resetn),
         .draw_notnot(draw_notnot),
-        .draw_color1(draw_color1),
-        .draw_color_logic(draw_color_logic),
-        .draw_color2(draw_color2),
+        .draw_colour1(draw_colour1),
+        .draw_colour_logic(draw_colour_logic),
+        .draw_colour2(draw_colour2),
+        .draw_start(draw_start),
+        .draw_lose(draw_lose),
         .not_not_selector(not_not_selector),
-        .color_logic_selector(color_logic_selector),
-        .color_selector_1(color_selector_1),
-        .color_selector_2(color_selector_2),
+        .colour_logic_selector(colour_logic_selector),
+        .colour_selector_1(colour_selector_1),
+        .colour_selector_2(colour_selector_2),
         .done_draw_notnot(done_draw_notnot),
-        .done_draw_color_logic(done_draw_color_logic),
-        .done_draw_color1(done_draw_color1),
-        .done_draw_color2(done_draw_color2),
-        .color(color),
+        .done_draw_colour_logic(done_draw_colour_logic),
+        .done_draw_colour1(done_draw_colour1),
+        .done_draw_colour2(done_draw_colour2),
+        .done_draw_start(done_draw_start),
+        .done_draw_lose(done_draw_lose),
+        .colour(colour),
         .x(x),
         .y(y)
     );
@@ -50,29 +65,45 @@ endmodule
 
 module control_text_display(
     input clock, resetn,
-    input done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2, draw_enable,
+    input done_draw_notnot, done_draw_colour_logic, done_draw_colour1, done_draw_colour2, draw_enable,
+    input done_draw_start, done_draw_lose,
+    input start, lose,
     output reg writeEn,
-    output reg draw_notnot, draw_color1, draw_color_logic, draw_color2
+    output reg draw_notnot, draw_colour1, draw_colour_logic, draw_colour2,
+    output reg draw_start, draw_lose
 );
 
-    reg [1:0] current_state, next_state;
+    reg [2:0] current_state, next_state;
 
     localparam
         S_WAIT = 3'd0,
         S_DRAW_NOTNOT = 3'd1,
-        S_DRAW_COLOR1 = 3'd2,
-        S_DRAW_COLOR_LOGIC = 3'd3,
-        S_DRAW_COLOR2 = 3'd4;
+        S_DRAW_COLOUR1 = 3'd2,
+        S_DRAW_COLOUR_LOGIC = 3'd3,
+        S_DRAW_COLOUR2 = 3'd4,
+        S_DRAW_START = 3'd5,
+        S_DRAW_LOSE = 3'd6;
 
     // State table
     always@(*)
     begin: state_table
         case (current_state)
-            S_WAIT: next_state = draw_enable? S_DRAW_NOTNOT : S_WAIT;
-            S_DRAW_NOTNOT: next_state = done_draw_notnot? S_DRAW_COLOR1: S_DRAW_NOTNOT;
-            S_DRAW_COLOR1: next_state = done_draw_color1? S_DRAW_COLOR_LOGIC: S_DRAW_COLOR1;
-            S_DRAW_COLOR_LOGIC: next_state = done_draw_color_logic? S_DRAW_COLOR2 : S_DRAW_COLOR_LOGIC;
-            S_DRAW_COLOR2: next_state = done_draw_color2? S_WAIT: S_DRAW_COLOR2;
+            S_WAIT: begin
+                if (draw_enable)
+                    next_state = S_DRAW_NOTNOT;
+                else if (lose)
+                    next_state = S_DRAW_LOSE;
+                else if (start)
+                    next_state = S_DRAW_START;
+                else
+                    next_state = S_WAIT;
+            end
+            S_DRAW_NOTNOT: next_state = done_draw_notnot? S_DRAW_COLOUR1 : S_DRAW_NOTNOT;
+            S_DRAW_COLOUR1: next_state = done_draw_colour1? S_DRAW_COLOUR_LOGIC : S_DRAW_COLOUR1;
+            S_DRAW_COLOUR_LOGIC: next_state = done_draw_colour_logic? S_DRAW_COLOUR2 : S_DRAW_COLOUR_LOGIC;
+            S_DRAW_COLOUR2: next_state = done_draw_colour2? S_WAIT: S_DRAW_COLOUR2;
+            S_DRAW_START: next_state = done_draw_start ? S_WAIT : S_DRAW_START;
+            S_DRAW_LOSE: next_state = done_draw_lose? S_WAIT : S_DRAW_LOSE;
             default: next_state = S_WAIT;
         endcase
     end // state_table
@@ -81,9 +112,11 @@ module control_text_display(
     always @(*) begin: enable_signals
         // By default: all signals 0
         draw_notnot = 1'b0;
-        draw_color1 = 1'b0;
-        draw_color_logic = 1'b0;
-        draw_color2 = 1'b0;
+        draw_colour1 = 1'b0;
+        draw_colour_logic = 1'b0;
+        draw_colour2 = 1'b0;
+        draw_start = 1'b0;
+        draw_lose = 1'b0;
         writeEn = 1'b0;
         
         case (current_state)
@@ -91,16 +124,24 @@ module control_text_display(
                 draw_notnot = 1'b1;
                 writeEn = 1'b1;
                 end
-            S_DRAW_COLOR1 : begin 
-                draw_color1 = 1'b1;
+            S_DRAW_COLOUR1 : begin 
+                draw_colour1 = 1'b1;
                 writeEn = 1'b1;
                 end
-            S_DRAW_COLOR_LOGIC : begin
-                draw_color_logic = 1'b1;
+            S_DRAW_COLOUR_LOGIC : begin
+                draw_colour_logic = 1'b1;
                 writeEn = 1'b1;
                 end
-            S_DRAW_COLOR2 : begin
-                draw_color2 = 1'b1;
+            S_DRAW_COLOUR2 : begin
+                draw_colour2 = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_DRAW_START : begin
+                draw_start = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_DRAW_LOSE : begin
+                draw_lose = 1'b1;
                 writeEn = 1'b1;
                 end
         endcase
@@ -119,69 +160,98 @@ endmodule
 
 module datapath_text_display(
     input clock, resetn,
-    input draw_notnot, draw_color1, draw_color_logic, draw_color2,
-    input [2:0] not_not_selector, color_logic_selector, color_selector_1, color_selector_2,
-    output reg done_draw_notnot, done_draw_color_logic, done_draw_color1, done_draw_color2,
-    output reg [2:0] color,
+    input draw_notnot, draw_colour1, draw_colour_logic, draw_colour2,
+    input draw_start, draw_lose,
+    input [2:0] not_not_selector, colour_logic_selector, colour_selector_1, colour_selector_2,
+    output reg done_draw_notnot, done_draw_colour_logic, done_draw_colour1, done_draw_colour2,
+    output reg done_draw_start, done_draw_lose,
+    output reg [2:0] colour,
     output reg [8:0] x,
     output reg [7:0] y
 );
-    wire [7:0] xnotnot = 8'd20;
-    wire [7:0] xcolor1 = 8'd75;
-    wire [7:0] xcolor_logic = 8'd130;
-    wire [7:0] xcolor2 = 8'd185;
+    wire [7:0] ynotnot = 8'd20;
+    wire [7:0] ycolour1 = 8'd75;
+    wire [7:0] ycolour_logic = 8'd130;
+    wire [7:0] ycolour2 = 8'd185;
 
-    wire [2:0] blank_color, not_color, notnot_color, notnotnot_color;
-    wire [2:0] red_color, green_color, blue_color, yellow_color;
-    wire [2:0] and_color, or_color;
-    reg [13:0] notnot_address, color_address, color_logic_address;
+    wire [2:0] blank_colour, not_colour, notnot_colour, notnotnot_colour;
+    wire [2:0] red_colour, green_colour, blue_colour, yellow_colour;
+    wire [2:0] and_colour, or_colour;
+    wire [2:0] start_out, lose_out;
+    reg [13:0] colour_address;
+
+    reg[16:0] start_address, lose_address;
 
     blankROM n0(
-        .address(notnot_address),
+        .address(colour_address),
         .clock(clock),
-        .q(blank_color)
+        .q(blank_colour)
     );
 
     notROM n1(
-        .address(notnot_address),
+        .address(colour_address),
         .clock(clock),
-        .q(not_color)
+        .q(not_colour)
     );
 
     notnotROM n2(
-        .address(notnot_address),
+        .address(colour_address),
         .clock(clock),
-        .q(notnot_color)
+        .q(notnot_colour)
     );
 
     notnotnotROM n3(
-        .address(notnot_address),
+        .address(colour_address),
         .clock(clock),
-        .q(notnotnot_color)
+        .q(notnotnot_colour)
     );
 
     redROM r0(
-        .address(color_address),
+        .address(colour_address),
         .clock(clock),
-        .q(red_color)
+        .q(red_colour)
     );
 
     greenROM g0(
-        .address(color_address),
+        .address(colour_address),
         .clock(clock),
-        .q(green_color)
+        .q(green_colour)
     );
 
     blueROM b0(
-        .address(color_address),
+        .address(colour_address),
         .clock(clock),
-        .q(blue_color)
+        .q(blue_colour)
     );
 
     yellowROM y0(
-        .address(color_address),
+        .address(colour_address),
         .clock(clock),
-        .q(yellow_color)
+        .q(yellow_colour)
+    );
+
+    andROM a0(
+        .address(colour_address),
+        .clock(clock),
+        .q(and_colour)
+    );
+
+    orROM o0(
+        .address(colour_address),
+        .clock(clock),
+        .q(or_colour)
+    );
+
+    startROM s0(
+        .address(start_address),
+        .clock(clock),
+        .q(start_out)
+    );
+
+    loseROM l0(
+        .address(lose_address),
+        .clock(clock),
+        .q(lose_out)
     );
 
     always @(posedge clock)
@@ -189,99 +259,141 @@ module datapath_text_display(
         if (resetn == 0)
         begin
             done_draw_notnot <= 1'b0;
-            done_draw_color1 <= 1'b0;
-            done_draw_color_logic <= 1'b0;
-            done_draw_color2 <= 1'b0;
-            notnot_address <= 14'b0;
-            color_address <= 14'b0;
-            color_logic_address <= 14'b0;
-            color <= 3'b0;
+            done_draw_colour1 <= 1'b0;
+            done_draw_colour_logic <= 1'b0;
+            done_draw_colour2 <= 1'b0;
+            done_draw_start <= 1'b0;
+            done_draw_lose <= 1'b0;
+            colour_address <= 14'b0;
+            colour_address <= 14'b0;
+            colour_address <= 14'b0;
+            start_address <= 17'b0;
+            lose_address <= 17'b0;
+            colour <= 3'b0;
             x <= 9'b0;
             y <= 8'b0;
         end
         else begin
             if (draw_notnot) begin
+                done_draw_colour2 <= 1'b0;
+                done_draw_start <= 1'b0;
+                done_draw_lose <= 1'b0;
+
                 case (not_not_selector[1:0])
-                    0: color <= blank_color;
-                    1: color <= not_color;
-                    2: color <= notnot_color;
-                    3: color <= notnotnot_color;
+                    0: colour <= blank_colour;
+                    1: colour <= not_colour;
+                    2: colour <= notnot_colour;
+                    3: colour <= notnotnot_colour;
                 endcase
 
-                x <= xnotnot + notnot_address[6:0];
-                y <= notnot_address[13:7];
+                x <= colour_address % 320;
+                y <= ynotnot + colour_address / 320;
 
-                notnot_address <= notnot_address + 1'b1;
+                colour_address <= colour_address + 1;
 
-                if (notnot_address == 14'd16000)
+                if (colour_address == 14'd16000) 
                 begin
                     done_draw_notnot <= 1'b1;
-                    notnot_address <= 14'd0;
+                    colour_address <= 14'd0;
                 end
             end
+            
+            if (draw_colour1) begin
+                done_draw_notnot <= 1'b0;
 
-            if (draw_color1) begin
-                case (color_selector_1[1:0])
-                    0: color <= red_color;
-                    1: color <= green_color;
-                    2: color <= blue_color;
-                    3: color <= yellow_color;
+                case (colour_selector_1[1:0])
+                    0: colour <= red_colour;
+                    1: colour <= green_colour;
+                    2: colour <= blue_colour;
+                    3: colour <= yellow_colour;
                 endcase
 
-                x <= xcolor1 + color_address[6:0];
-                y <= color_address[13:7];
+                x <= colour_address % 320;
+                y <= ycolour1 + colour_address / 320;
 
-                color_address <= color_address + 1'b1;
+                colour_address <= colour_address + 1;
 
-                if (color_address == 14'd16000)
+                if (colour_address == 14'd16000)
                 begin
-                    done_draw_color1 <= 1'b1;
-                    color_address <= 14'd0;
+                    done_draw_colour1 <= 1'b1;
+                    colour_address <= 14'd0;
                 end
-            end
+            end 
+            
+            if (draw_colour_logic) begin
+                done_draw_colour1 <= 1'b0;
 
-            if (draw_color_logic) begin
-                case (color_logic_selector[1:0])
-                    3: color <= blank_color;
-                    2: color <= and_color;
-                    1: color <= or_color;
-                    0: color <= blank_color;
+                case (colour_logic_selector[1:0])
+                    0: colour <= blank_colour;
+                    1: colour <= or_colour;
+                    2: colour <= and_colour;
+                    3: colour <= blank_colour;
                 endcase
 
-                x <= xcolor1 + color_logic_address[6:0];
-                y <= color_logic_address[13:7];
+                x <= colour_address % 320;
+                y <= ycolour_logic + colour_address / 320;
 
-                color_logic_address <= color_logic_address + 1'b1;
+                colour_address <= colour_address + 1;
 
-                if (color_logic_address == 14'd16000)
+                if (colour_address == 14'd16000)
                 begin
-                    done_draw_color_logic <= 1'b1;
-                    color_logic_address <= 14'd0;
+                    done_draw_colour_logic <= 1'b1;
+                    colour_address <= 14'd0;
                 end
             end
+            
+            if (draw_colour2) begin
+                done_draw_colour_logic <= 1'b0;
 
-            if (draw_color2) begin
-                // If the logic only has one color, just display a blank
-                if (color_logic_selector[1:0] == 2'd0 || color_logic_selector[1:0] == 2'd3)
-                    color <= blank_color;
+                // If the logic only has one colour, just display a blank
+                if (colour_logic_selector[1:0] == 2'd0 || colour_logic_selector[1:0] == 2'd3)
+                    colour <= blank_colour; 
                 else begin
-                    case (color_selector_2[1:0])
-                        3: color <= red_color;
-                        2: color <= green_color;
-                        1: color <= blue_color;
-                        0: color <= yellow_color;
+                    case (colour_selector_2[1:0])
+                        3: colour <= red_colour;
+                        2: colour <= green_colour;
+                        1: colour <= blue_colour;
+                        0: colour <= yellow_colour;
                     endcase
                 end
 
-                x <= xcolor2 + color_address[6:0];
-                y <= color_address[13:7];
+                x <= colour_address % 320;
+                y <= ycolour2 + colour_address / 320;
 
-                color_address <= color_address + 1'b1;
+                colour_address <= colour_address + 1;
 
-                if (color_address == 14'd16000)
+                if (colour_address == 14'd16000)
                 begin
-                    done_draw_color2 <= 1'b1;
-                    color_address <= 14'd0;
+                    done_draw_colour2 <= 1'b1;
+                    colour_address <= 14'd0;
+                end
+            end 
+            
+            if (draw_start) begin
+                colour <= start_out;
+                x <= start_address % 320;
+                y <= start_address / 320;
+
+                start_address <= start_address + 1;
+
+                if (start_address == 17'd76800)
+                begin
+                    done_draw_start <= 1'b1;
+                    start_address <= 17'd0;
+                end
+            end 
+            
+            if (draw_lose) begin
+                colour <= lose_out;
+                x <= lose_address % 320;
+                y <= lose_address / 320;
+
+                lose_address <= lose_address + 1;
+
+                if (lose_address == 17'd76800)
+                begin
+                    done_draw_lose <= 1'b1;
+                    lose_address <= 17'd0;
                 end
             end
         end
