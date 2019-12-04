@@ -3,7 +3,7 @@
 `include "text_display.v"
 module not_not(
     input [9:0] SW, 
-    input [2:0] KEY,
+    input [3:0] KEY,
     input CLOCK_50,
     output [6:0] HEX0, HEX1, HEX4, HEX5,
     output [3:0] LEDR,
@@ -158,8 +158,68 @@ module not_not(
     );
 endmodule
 
-module begin_game()
-;endmodule
+module not_not_control(
+    input clock,
+    input [3:0] KEY,
+    input start, lose, done_refresh,
+    output reg [7:0] score, highscore,
+    output reg draw_start, draw_lose,
+    output reg enable_lfsr, enable_display, reset
+);
 
-module game()
-;endmodule
+    reg [1:0] current_state, next_state;
+
+    localparam
+        S_START = 2'd0,
+        S_PLAY = 2'd1,
+        S_LOSE = 2'd2,
+        S_REFRESH = 2'd3
+
+    // State table
+    always@(*)
+    begin: state_table
+        case (current_state)
+            S_START: next_state = KEY[3:0] != 4'b1111? S_WAIT : S_START;
+            S_PLAY: next_state = lose? S_LOSE : S_PLAY;
+            S_LOSE: next_state = KEY[3:0] != 4'b1111? S_START: S_LOSE;
+            S_REFRESH: next_state = done_refresh? S_PLAY : S_LOSE;
+            default: next_state = S_WAIT;
+        endcase
+    end // state_table
+
+    // Enable registers
+    always @(*) begin: enable_signals
+        // By default: all signals 0
+        start = 1'b0;
+        lose = 1'b0;
+        done_refresh = 1'b0;
+        
+        case (current_state)
+            S_START: begin 
+                start = 1'b1;
+                d = 1'b1;  
+                end
+            S_PLAY : begin 
+                draw_colour1 = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_LOSE : begin
+                draw_colour_logic = 1'b1;
+                writeEn = 1'b1;
+                end
+            S_REFRESH : begin
+                draw_colour2 = 1'b1;
+                writeEn = 1'b1;
+                end
+        endcase
+    end
+
+    // State registers
+    always @(posedge clock)
+    begin: state_FFs
+        if (resetn == 0)
+            current_state <= S_WAIT;
+        else
+            current_state <= next_state;
+    end
+endmodule
