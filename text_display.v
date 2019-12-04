@@ -371,10 +371,10 @@ module datapath_text_display(
                     colour <= blank_colour; 
                 else begin
                     case (colour_selector_2[1:0])
-                        3: colour <= red_colour;
-                        2: colour <= green_colour;
-                        1: colour <= blue_colour;
-                        0: colour <= yellow_colour;
+                        0: colour <= red_colour;
+                        1: colour <= green_colour;
+                        2: colour <= blue_colour;
+                        3: colour <= yellow_colour;
                     endcase
                 end
 
